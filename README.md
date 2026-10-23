@@ -1,34 +1,39 @@
-# Stockwise Inventory Monitor
+# Stockwise Inventory System
 
-Standalone, mobile-friendly inventory demo built with plain HTML, CSS, and JavaScript. It is separate from the portfolio and does not connect to the Google Sheet or a shared warehouse database.
+Private, owner-only inventory system. Product records and stock movements are stored in Supabase Postgres and accessed through Supabase Auth with row-level security. The app has no fictional sample records or browser-only inventory storage.
 
-## Open locally
+## Set up Supabase
 
-Open `index.html` in a browser, or open this folder in VS Code and use the Live Server extension.
+1. Create a Supabase project.
+2. Run `supabase/schema.sql` once in the Supabase SQL Editor.
+3. In Supabase Authentication, create the owner's email/password user. Public sign-ups are not part of this app.
+4. Copy the project URL and the browser-safe Publishable key from the Supabase project settings. Do not use or expose a `service_role` or secret key.
 
-## Fast product setup with CSV
+## Connect Vercel
 
-- Choose **Export CSV** to download the product master as an editable template.
-- Add rows or edit product descriptions, principals, categories, case pack, prices, opening stock, and reorder levels in Excel or Google Sheets. Save/download as CSV, then choose **Import CSV**.
-- Existing item codes are updated while their data-entry movement history stays in place. New item codes are added. Rows missing item code, description, principal, or a valid case pack are skipped and counted in the import result.
-- Prices in the template use **owning cost per case including VAT** and **list price per case**. The importer also accepts common item-code/product/principal and case-price column names.
+Set these Vercel project environment variables for Production (and Preview if needed):
 
-## Included workflow
+- `SUPABASE_URL`
+- `SUPABASE_PUBLISHABLE_KEY`
 
-- Dashboard with stock value, physical count value, variance by principal, low-stock review, and a live before/after chart by principal. The chart refreshes automatically after product imports, manual entries, or principal changes.
-- Product master with case pack, opening stock, owning cost, list price, and reorder level.
-- Data entry matching the sheet's date, mode, document number, principal, item code, CS, and PC fields.
-- Audit results with quantity variance, owning-cost variance, list-price variance, principal totals, and count coverage.
-- CSV exports for products, entries, and audit results.
-- Demo changes stored in the current browser using localStorage. Reset sample data from the sidebar.
+The `/api/config` function returns only those public client settings. Database access is protected by row-level security; the server secret key is never sent to the browser. Redeploy after adding environment variables.
 
-## Calculations adapted from the workbook
+## Importing the product master
 
-- Case-equivalent quantity = cases + pieces ÷ pieces per case.
-- Cost before count = case-equivalent quantity × owning cost per case ÷ 1.12.
-- Cost after count = physical case-equivalent quantity × owning cost per case ÷ 1.12.
-- Price before/after count = corresponding case-equivalent quantity × list price per case.
-- Quantity variance = physical count − system stock; cost variance = cost after − cost before.
-- Totals roll up by principal and then into the overall total.
+- Use **Import CSV** to load product files exported from Google Sheets.
+- The importer recognizes columns such as `ITEMCODE`, `DESCRIPTION`, `CATEGORY`, `QTY PER CASE`, `COST`, and `PRICE`. If a file has no principal column, it asks for the principal name for that sheet.
+- Product master import contains SKU, description, principal, category, case pack, cost, and list price. It does not import old stock counts or audit values unless opening-stock columns are intentionally included.
+- Existing SKUs update product master fields without deleting movement history. Missing price fields preserve the existing price.
+- Export a CSV at any time to download the current product master or reports.
 
-Sample products and counts are fictional. Browser storage does not sync across devices or users, so this remains a front-end demo rather than a shared production inventory system.
+## Inventory records
+
+- The owner signs in with the Supabase Auth account created for this system.
+- Product master updates and stock entries are saved in the shared database and appear after sign-in on other devices.
+- Stock history is append-only. Correct a prior entry with an adjustment rather than deleting the original record.
+- Every movement stores the case pack used at that time, so a later pack-size update does not rewrite old quantities.
+- Physical Count Beginning establishes the quantity baseline; later dated receipts and deductions update system stock. Physical Count Ending is the audit count.
+- Cost before/after count = case-equivalent quantity × owning cost per case ÷ 1.12.
+- Price before/after count = case-equivalent quantity × list price per case.
+
+The system does not contain the Google Sheet's product list until the owner imports it into the configured private database.
